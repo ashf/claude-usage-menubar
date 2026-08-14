@@ -24,6 +24,7 @@ enum Keychain {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: credentialsService,
+            kSecAttrAccount as String: NSUserName(),
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]

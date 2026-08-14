@@ -16,8 +16,10 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
-curl -sS --max-time 5 \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    https://api.anthropic.com/api/oauth/usage \
+# The token goes in via a stdin config file rather than argv, which any
+# same-uid process could read from the process list.
+printf 'header = "Authorization: Bearer %s"\n' "$TOKEN" \
+    | curl -sS --max-time 5 --config - \
+        -H "Content-Type: application/json" \
+        https://api.anthropic.com/api/oauth/usage \
     | /usr/bin/python3 -m json.tool
