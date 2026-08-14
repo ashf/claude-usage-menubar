@@ -38,7 +38,7 @@ struct UsageClient {
     private func fetchOnce() async throws -> UsageSnapshot {
         let credentials: ClaudeCredentials
         do {
-            credentials = try Keychain.claudeCredentials()
+            credentials = try await Keychain.claudeCredentials()
         } catch KeychainError.itemNotFound {
             throw UsageError.noCredentials
         } catch KeychainError.malformedCredentials {

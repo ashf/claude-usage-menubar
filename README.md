@@ -22,8 +22,9 @@ Refresh button, and Quit.
 Usage comes from `GET https://api.anthropic.com/api/oauth/usage`, the same
 endpoint the Claude Code CLI uses. It is authenticated with the OAuth access
 token that the CLI stores in the macOS Keychain as a generic password under the
-service name `Claude Code-credentials`. The token is read in-process via the
-Security framework, and is never logged or written anywhere.
+service name `Claude Code-credentials`. The token is read by running
+`/usr/bin/security find-generic-password`, captured from that process's pipe,
+and is never logged, written anywhere, or passed as a command argument.
 
 **macOS will prompt for Keychain access on first run.** Granting it (either
 "Allow" or "Always Allow") is required for the app to read the token; without
@@ -112,32 +113,29 @@ certificate leaf instead, which survives rebuilds.
 The first build after creating the identity prompts once for `codesign` to use
 the private key — choose Always Allow.
 
-## Why the Keychain still asks after a reinstall
+## Why the read is delegated to `security`
 
-The credentials item is guarded by two independent ACL entries, and both must
-admit the app before a read is silent:
+Claude Code rewrites the credentials item every time it refreshes the OAuth
+token. Each rewrite invalidates the stored authorization for every *other*
+application holding a grant on that item — the ACL entries and the partition
+list both survive the rewrite untouched, but macOS stops honoring them, because
+the item's `ACLAuthorizationIntegrity` record no longer describes its contents.
+The next in-process read then asks for the login password again.
 
-- `ACLAuthorizationDecrypt` holds the trusted applications, matched by
-  designated requirement. Certificate signing makes this one stable.
-- `ACLAuthorizationPartitionID` holds a partition list of **cdhashes**, which
-  no signing arrangement can stabilize — a rebuilt binary always hashes
-  differently.
+Nothing about the reading application changes that. Trusted-application entries
+are matched by designated requirement and partition entries by cdhash; both
+describe *who* may read, and neither survives the item being mutated by someone
+else. Signing stably, reinstalling, and pruning stale ACL entries all leave the
+behavior unchanged. The observable signature is a prompt arriving within a
+minute of the item's modification date changing, while `security dump-keychain`
+shows an access list that already names the app.
 
-The two dialogs look alike but are not: a trusted-application miss offers
-Allow / Always Allow, whereas a partition miss is the one with a **password
-field**. Only entering the password updates the partition list. Clicking
-"Always Allow" against a partition miss appends yet another trusted-application
-entry — which is why the list accumulates duplicates while the prompting
-continues unchanged.
+`/usr/bin/security` is not affected, because it belongs to the item's
+`apple-tool:` partition, so the app runs it as a subprocess and takes the token
+from its pipe. This is also why `probe-usage.sh` has never prompted.
 
-So each `./Scripts/install.sh` costs one password prompt, and then the app is
-quiet until the next install. `/usr/bin/security` is exempt because the
-partition list includes `apple-tool:`, which is why `probe-usage.sh` never
-prompts.
-
-The current lists can be inspected with `security dump-keychain -a`, or more
-readably by reading the item's `SecAccess` directly via
-`SecKeychainItemCopyAccess` and `SecACLCopyAuthorizations`.
+Code signing still matters for the reasons above, but it is not what keeps the
+Keychain quiet.
 
 ## Inspecting the raw API response
 
