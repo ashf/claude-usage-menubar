@@ -36,6 +36,18 @@ Bar and percent colors follow each limit's `severity`.
 Usage refreshes on launch, every 60 seconds, and again whenever the dropdown is
 opened.
 
+The endpoint's rate limit is per-account and shared with the `claude` CLI and
+the Claude desktop app, so a poll can be throttled even while this app is
+polling gently. A 429 (or a network blip) therefore keeps the last good reading
+on screen — the menu bar title stays put and the panel explains why the numbers
+are stale — rather than blanking the panel.
+
+After a 429, polling backs off: `Retry-After` is honored when it carries a real
+delay, otherwise the delay doubles from 60 seconds, and either way it is capped
+at 15 minutes. A success clears the backoff, and clicking Refresh is deliberate
+and skips it. Network failures keep the normal 60-second cadence, since a blip
+is worth retrying promptly.
+
 If the token has expired, the app re-reads the Keychain once (Claude Code may
 have refreshed it in the meantime) and retries. It never performs the OAuth
 refresh flow itself — if the retry still fails it shows "Sign in to Claude

@@ -16,6 +16,10 @@ struct MenuContentView: View {
                 message("Loading usage…")
             case .noCredentials:
                 message("No Claude Code credentials found. Run `claude` and sign in.")
+            case .keychainDenied:
+                message("Keychain access was denied. Unlock your login keychain, or allow ClaudeUsageMenuBar in Keychain Access.")
+            case .malformedCredentials:
+                message("Stored Claude Code credentials aren't in the expected format. Run `claude` to sign in again.")
             case .signedOut:
                 message("Sign in to Claude Code")
             case .failed(let description):
@@ -27,17 +31,24 @@ struct MenuContentView: View {
             Divider()
 
             HStack(spacing: 12) {
-                Button("Refresh") { store.refresh() }
+                Button("Refresh") { store.refresh(userInitiated: true) }
                 Spacer()
                 Button("Quit") { NSApplication.shared.terminate(nil) }
             }
             .font(.system(size: 12))
 
-            if let updated = store.lastUpdated {
-                Text("Last updated \(UsageFormat.relativeUpdated(updated))")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                if let updated = store.lastUpdated {
+                    Text("Last updated \(UsageFormat.relativeUpdated(updated))")
+                }
+                if let notice = store.notice {
+                    Text(notice)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .font(.system(size: 10))
+            .foregroundStyle(.secondary)
         }
         .padding(14)
         .frame(width: 300, alignment: .leading)
