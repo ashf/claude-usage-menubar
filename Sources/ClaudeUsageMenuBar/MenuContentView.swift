@@ -101,6 +101,12 @@ struct MenuContentView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
             }
+
+            if let pace = limit.weeklyPace {
+                Text(UsageFormat.paceLine(for: pace))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

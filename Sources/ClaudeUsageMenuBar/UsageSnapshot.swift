@@ -76,6 +76,33 @@ struct UsageLimit: Decodable {
         let remaining = resetsAt.timeIntervalSinceNow
         return remaining > 0 ? remaining : nil
     }
+
+    /// Weekly pace, assuming the window is the 7 days ending at `resetsAt`.
+    var weeklyPace: UsagePace? {
+        guard group == "weekly", let remaining = timeRemaining else { return nil }
+        return UsagePace(percentUsed: percent, secondsUntilReset: remaining)
+    }
+}
+
+struct UsagePace {
+    static let day: TimeInterval = 86_400
+    static let week: TimeInterval = 7 * day
+
+    let percentUsed: Int
+    let secondsUntilReset: TimeInterval
+
+    var percentLeft: Double { Double(max(100 - percentUsed, 0)) }
+    var daysUntilReset: Double { secondsUntilReset / Self.day }
+
+    /// Even share of what is left over the remaining days, counting a partial last day as one.
+    var percentLeftPerDay: Double { percentLeft / max(daysUntilReset, 1) }
+
+    /// Days until the limit is hit at the average rate so far; nil before any usage.
+    var projectedDaysLeft: Double? {
+        let elapsedDays = (Self.week - secondsUntilReset) / Self.day
+        guard percentUsed > 0, elapsedDays > 0 else { return nil }
+        return percentLeft / (Double(percentUsed) / elapsedDays)
+    }
 }
 
 struct UsageSnapshot: Decodable {
@@ -119,6 +146,14 @@ enum UsageFormat {
     static func resetLine(for limit: UsageLimit) -> String? {
         guard let remaining = limit.timeRemaining else { return nil }
         return "Resets in \(spelledRemaining(remaining))"
+    }
+
+    /// `~12%/day left · ~3.4 days at current pace`, or `lasts past reset` when on track.
+    static func paceLine(for pace: UsagePace) -> String {
+        let perDay = "~\(Int(pace.percentLeftPerDay.rounded()))%/day left"
+        guard let days = pace.projectedDaysLeft else { return perDay }
+        if days >= pace.daysUntilReset { return "\(perDay) · lasts past reset" }
+        return "\(perDay) · ~\(String(format: "%.1f", days)) days at current pace"
     }
 
     static func ringGlyph(forPercent percent: Int) -> String {
