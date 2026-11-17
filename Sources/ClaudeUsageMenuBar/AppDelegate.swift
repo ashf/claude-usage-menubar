@@ -143,6 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
 
         let hostingView = NSHostingView(rootView: MenuContentView(store: store))
+        hostingView.rootView.onResize = { [weak self] in self?.fitContent() }
         hostingView.frame = NSRect(origin: .zero, size: hostingView.fittingSize)
 
         contentItem = NSMenuItem()
@@ -167,6 +168,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         store.refresh()
+        fitContent()
+    }
+
+    private func fitContent() {
         if let hostingView = contentItem.view {
             hostingView.frame = NSRect(origin: .zero, size: hostingView.fittingSize)
         }

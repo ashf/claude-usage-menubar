@@ -16,8 +16,13 @@ that session resets:
 Clicking it opens a dropdown mirroring the Usage panel: a "Current session"
 row and a "Weekly limits" section (All models plus any per-model rows), each
 with a progress bar and its own reset line. When Codex has been used on this
-Mac, a "Codex Usage" section follows with its session and weekly limits. Last
-come a last-updated line, a Refresh button, and Quit.
+Mac, a "Codex Usage" section follows with its session and weekly limits.
+
+A toggle at the bottom switches to a "Sessions & weekly" layout instead: one
+"Current session" section with the Claude and Codex rows side by side, then one
+"Weekly limits" section with Claude's weekly rows (All models plus per-model
+ones such as Fable) and Codex's. The choice is remembered. Below it come a
+last-updated line, a Refresh button, and Quit.
 
 ## How it works
 
