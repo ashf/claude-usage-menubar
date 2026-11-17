@@ -8,7 +8,7 @@ struct MenuContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Claude Usage")
+            Text("✳ Claude Usage")
                 .font(.system(size: 13, weight: .semibold))
 
             switch store.state {
@@ -30,7 +30,7 @@ struct MenuContentView: View {
 
             if let codex = store.codex {
                 Divider()
-                Text("Codex Usage")
+                Text(">_ Codex Usage")
                     .font(.system(size: 13, weight: .semibold))
                 loadedBody(codex.snapshot)
                 if let recordedAt = codex.recordedAt {
