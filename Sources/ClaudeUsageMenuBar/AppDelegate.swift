@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 enum UsageState {
@@ -16,6 +17,7 @@ final class UsageStore: ObservableObject {
     @Published private(set) var state: UsageState = .loading
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var notice: String?
+    @Published private(set) var codex: CodexUsage.Reading?
 
     private let client = UsageClient()
     private var inFlight: Task<Void, Never>?
@@ -39,6 +41,7 @@ final class UsageStore: ObservableObject {
         if let last = lastRequestStarted, now.timeIntervalSince(last) < minimumRequestInterval {
             return
         }
+        Task { self.codex = await CodexUsage.latest() }
         if !userInitiated, let next = nextAllowedRequest, now < next {
             return
         }
@@ -92,16 +95,15 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    /// The menu bar title: ring glyph, percent, and time until the session
-    /// limit resets.
+    /// The menu bar title: each tool's session percent and time until it
+    /// resets, with Codex left off until a reading exists.
     var menuBarTitle: String {
-        guard case .loaded(let snapshot) = state, let session = snapshot.sessionLimit else {
-            return "◌"
-        }
+        var claude: UsageLimit?
+        if case .loaded(let snapshot) = state { claude = snapshot.sessionLimit }
 
-        var title = "\(UsageFormat.ringGlyph(forPercent: session.percent)) \(session.percent)%"
-        if let remaining = session.timeRemaining {
-            title += " · \(UsageFormat.compactRemaining(remaining))"
+        var title = "✳ \(claude.map(UsageFormat.compactSession) ?? "◌")"
+        if let codex = codex?.snapshot.sessionLimit {
+            title += " | >_ \(UsageFormat.compactSession(codex))"
         }
         return title
     }
@@ -127,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var contentItem: NSMenuItem!
     private var refreshTimer: Timer?
-    private var titleObservation: Task<Void, Never>?
+    private var titleObservation: AnyCancellable?
 
     private let refreshInterval: TimeInterval = 60
 
@@ -170,12 +172,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// `objectWillChange` fires before the change and ignores demand, so a
+    /// `for await` over it traps; hopping to the main queue reads the new value.
     private func observeTitle() {
-        titleObservation = Task { [weak self] in
-            guard let self else { return }
-            for await _ in self.store.$state.values {
-                self.statusItem.button?.title = self.store.menuBarTitle
+        statusItem.button?.title = store.menuBarTitle
+        titleObservation = store.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.statusItem.button?.title = self.store.menuBarTitle
+                }
             }
-        }
     }
 }

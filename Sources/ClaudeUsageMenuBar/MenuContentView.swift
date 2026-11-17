@@ -28,6 +28,18 @@ struct MenuContentView: View {
                 loadedBody(snapshot)
             }
 
+            if let codex = store.codex {
+                Divider()
+                Text("Codex Usage")
+                    .font(.system(size: 13, weight: .semibold))
+                loadedBody(codex.snapshot)
+                if let recordedAt = codex.recordedAt {
+                    Text("Live numbers unavailable, from Codex's last activity \(UsageFormat.relativeUpdated(recordedAt))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Divider()
 
             HStack(spacing: 12) {

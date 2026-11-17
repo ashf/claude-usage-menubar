@@ -52,7 +52,18 @@ struct UsageLimit: Decodable {
         }
     }
 
-    private static func isoDate(from text: String) -> Date? {
+    /// Unknown severity, so the tint falls back to the percent thresholds.
+    init(kind: String, group: String, percent: Int, resetsAt: Date?) {
+        self.kind = kind
+        self.group = group
+        self.percent = percent
+        self.resetsAt = resetsAt
+        severity = ""
+        scope = nil
+        isActive = false
+    }
+
+    static func isoDate(from text: String) -> Date? {
         let withFractional = ISO8601DateFormatter()
         withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = withFractional.date(from: text) { return date }
@@ -156,14 +167,10 @@ enum UsageFormat {
         return "\(perDay) · ~\(String(format: "%.1f", days)) days at current pace"
     }
 
-    static func ringGlyph(forPercent percent: Int) -> String {
-        switch percent {
-        case ..<13: return "○"
-        case ..<38: return "◔"
-        case ..<63: return "◑"
-        case ..<88: return "◕"
-        default: return "●"
-        }
+    /// Menu bar form: `18% · 2h31m`.
+    static func compactSession(_ limit: UsageLimit) -> String {
+        guard let remaining = limit.timeRemaining else { return "\(limit.percent)%" }
+        return "\(limit.percent)% · \(compactRemaining(remaining))"
     }
 
     static func humanize(_ identifier: String) -> String {

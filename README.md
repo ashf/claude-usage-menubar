@@ -5,17 +5,19 @@ Claude desktop app's Settings > Usage panel, always visible in the menu bar.
 
 > Written with [Claude Code](https://claude.com/claude-code).
 
-The menu bar title is driven by the current session limit, as a filling ring
-glyph, a percent, and the time until the session resets:
+The menu bar title shows the current session limit for Claude (`✳`) and, once
+a Codex reading exists, for Codex (`>_`): each as a percent and the time until
+that session resets:
 
 ```
-◔ 18% · 2h31m
+✳ 18% · 2h31m | >_ 40% · 3h12m
 ```
 
 Clicking it opens a dropdown mirroring the Usage panel: a "Current session"
 row and a "Weekly limits" section (All models plus any per-model rows), each
-with a progress bar and its own reset line, followed by a last-updated line, a
-Refresh button, and Quit.
+with a progress bar and its own reset line. When Codex has been used on this
+Mac, a "Codex Usage" section follows with its session and weekly limits. Last
+come a last-updated line, a Refresh button, and Quit.
 
 ## How it works
 
@@ -56,6 +58,24 @@ If the token has expired, the app re-reads the Keychain once (Claude Code may
 have refreshed it in the meantime) and retries. It never performs the OAuth
 refresh flow itself — if the retry still fails it shows "Sign in to Claude
 Code", and running `claude` again resolves it.
+
+## Codex usage
+
+Codex limits are read live from `GET https://chatgpt.com/backend-api/wham/usage`,
+the endpoint behind the Codex CLI's `/status`. It is authenticated with the
+ChatGPT access token and account id the CLI keeps in `~/.codex/auth.json`. The
+app reads that file on each refresh and never logs the token. Like the Claude
+token, it is never refreshed by the app: running `codex` keeps it current.
+
+When the live read fails (an API-key login, an expired token, a network error,
+or a response the app cannot parse), the app falls back to Codex's session
+logs. On every turn Codex writes a `rate_limits` record into
+`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, and the newest one is shown,
+labeled with its age. A window whose reset time has passed since then shows as
+0%. The section is hidden when neither source has a reading.
+
+`./Scripts/probe-codex-usage.sh` pretty-prints the raw endpoint response
+without printing the token.
 
 ## Requirements
 
